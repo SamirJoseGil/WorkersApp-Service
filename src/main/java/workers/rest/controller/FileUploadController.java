@@ -26,7 +26,11 @@ public class FileUploadController {
             String filePath = fileStorageService.storeFile(file, number);
             return new ResponseEntity<>("Archivo subido correctamente: " + filePath, HttpStatus.OK);
         } catch (IOException e) {
-            e.printStackTrace();
+            if (e.getMessage().equals("El archivo ya existe")) {
+                return new ResponseEntity<>("El archivo ya existe", HttpStatus.CONFLICT);
+            } else if (e.getMessage().equals("Tipo de archivo no permitido")) {
+                return new ResponseEntity<>("Tipo de archivo no permitido", HttpStatus.UNSUPPORTED_MEDIA_TYPE);
+            }
             return new ResponseEntity<>("Error al subir el archivo", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
