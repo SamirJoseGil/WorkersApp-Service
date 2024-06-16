@@ -1,11 +1,10 @@
 package workers.rest.controller;
 
-import workers.rest.service.FileStorageService;
+import workers.rest.service.SocketFileReceiverService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 
@@ -14,16 +13,12 @@ import java.io.IOException;
 public class FileUploadController {
 
     @Autowired
-    private FileStorageService fileStorageService;
+    private SocketFileReceiverService socketFileReceiverService;
 
     @PostMapping("/upload/{number}")
-    public ResponseEntity<String> uploadFile(@RequestParam("file") MultipartFile file, @PathVariable("number") String number) {
-        if (file.isEmpty()) {
-            return new ResponseEntity<>("Por favor seleccione un archivo", HttpStatus.BAD_REQUEST);
-        }
-
+    public ResponseEntity<String> uploadFile(@PathVariable("number") String number) {
         try {
-            String filePath = fileStorageService.storeFile(file, number);
+            String filePath = socketFileReceiverService.receiveFile(number);
             return new ResponseEntity<>("Archivo subido correctamente: " + filePath, HttpStatus.OK);
         } catch (IOException e) {
             if (e.getMessage().equals("El archivo ya existe")) {
