@@ -2,9 +2,7 @@ package workers.rest.service;
 
 import org.springframework.stereotype.Service;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.file.Files;
@@ -30,6 +28,7 @@ public class SocketFileReceiverService {
         }
     }
 
+    // Método para recibir archivos usando StreamReader y StreamWriter
     public String receiveFile(String number) throws IOException {
         String companyDirPath = rootDir + number;
         File companyDir = new File(companyDirPath);
@@ -40,38 +39,28 @@ public class SocketFileReceiverService {
 
         Path filePath = Paths.get(companyDirPath, "received_file");
 
-        try (Socket socket = new ServerSocket(PORT).accept();
-             FileOutputStream fos = new FileOutputStream(filePath.toFile())) {
-            byte[] buffer = new byte[4096];
-            int bytesRead;
+        try (ServerSocket serverSocket = new ServerSocket(PORT);
+             Socket socket = serverSocket.accept();
+             BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+             BufferedWriter writer = Files.newBufferedWriter(filePath)) {
 
-            while ((bytesRead = socket.getInputStream().read(buffer)) != -1) {
-                fos.write(buffer, 0, bytesRead);
-            }
+            // Leer el número de empresa
+            String companyNumber = reader.readLine();
+            System.out.println("Número de empresa recibido: " + companyNumber);
 
-            if (!isAllowedFileType(filePath.toString())) {
-                Files.delete(filePath);
-                throw new IOException("Tipo de archivo no permitido");
+            // Leer y escribir el archivo
+            String line;
+            while ((line = reader.readLine()) != null) {
+                writer.write(line);
+                writer.newLine();
             }
-        } catch (IOException e) {
-            throw e;
         }
 
         return filePath.toString();
     }
 
-    private boolean isAllowedFileType(String filePath) {
-        String[] allowedExtensions = {".rar", ".zip"};
-        for (String extension : allowedExtensions) {
-            if (filePath.toLowerCase().endsWith(extension)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private class FileReceiver implements Runnable {
-        private Socket socket;
+    private static class FileReceiver implements Runnable {
+        private final Socket socket;
 
         public FileReceiver(Socket socket) {
             this.socket = socket;
@@ -79,9 +68,13 @@ public class SocketFileReceiverService {
 
         @Override
         public void run() {
-            try {
-                String number = "default";
-                String companyDirPath = rootDir + number;
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
+                // Leer el número de empresa
+                String companyNumber = reader.readLine();
+                System.out.println("Número de empresa recibido en hilo secundario: " + companyNumber);
+
+                // Guardar el archivo en una ubicación específica
+                String companyDirPath = "C:/uploads/" + companyNumber;
                 File companyDir = new File(companyDirPath);
 
                 if (!companyDir.exists()) {
@@ -90,20 +83,12 @@ public class SocketFileReceiverService {
 
                 Path filePath = Paths.get(companyDirPath, "received_file");
 
-                try (FileOutputStream fos = new FileOutputStream(filePath.toFile())) {
-                    byte[] buffer = new byte[4096];
-                    int bytesRead;
-
-                    while ((bytesRead = socket.getInputStream().read(buffer)) != -1) {
-                        fos.write(buffer, 0, bytesRead);
+                try (BufferedWriter writer = Files.newBufferedWriter(filePath)) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        writer.write(line);
+                        writer.newLine();
                     }
-                } finally {
-                    socket.close();
-                }
-
-                if (!isAllowedFileType(filePath.toString())) {
-                    Files.delete(filePath);
-                    throw new IOException("Tipo de archivo no permitido");
                 }
             } catch (IOException e) {
                 e.printStackTrace();
