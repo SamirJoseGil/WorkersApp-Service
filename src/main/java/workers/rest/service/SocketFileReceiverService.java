@@ -13,7 +13,7 @@ import java.nio.file.Paths;
 public class SocketFileReceiverService {
 
     private final String rootDir = "C:/uploads/";
-    private final int PORT = 5000;
+    private final int PORT = 5001;
 
     public void startServer() {
         try (ServerSocket serverSocket = new ServerSocket(PORT)) {
@@ -54,6 +54,9 @@ public class SocketFileReceiverService {
                 writer.write(line);
                 writer.newLine();
             }
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw new IOException("Error al recibir el archivo: " + e.getMessage());
         }
 
         return filePath.toString();
@@ -89,6 +92,7 @@ public class SocketFileReceiverService {
                         writer.write(line);
                         writer.newLine();
                     }
+                    System.out.println("Archivo recibido correctamente en hilo secundario: " + filePath);
                 }
             } catch (IOException e) {
                 e.printStackTrace();
